@@ -1,8 +1,10 @@
 #!/usr/bin/env stack
 {- stack runghc --verbosity info
-   --package hledger-lib
+   --package hledger-lib-1.32.3
+   --package hledger-1.32.3
    --package safe
    --package text
+   --resolver lts-22.9
 -}
 {-
 
@@ -17,12 +19,22 @@ http://stefanorodighiero.net/software/hledger-dupes.html
 -}
 
 import Hledger
+import Hledger.Cli.Script
 import Text.Printf (printf)
 import System.Environment (getArgs)
 import Safe (headDef)
 import Data.List
 import Data.Function
 import qualified Data.Text as T
+
+
+cmdmode = hledgerCommandMode (unlines
+  ["hledger-dupes"
+    ------------------------------------78----------------------------------------
+  ,""
+  ,"_FLAGS"
+  ])
+  [] [generalflagsgroup1] [] ([], Just $ argsFlag "[ARGS]")  -- or Nothing
 
 accountsNames :: Journal -> [(String, AccountName)]
 accountsNames j = map leafAndAccountName as
@@ -46,6 +58,8 @@ render (leafName, accountNameL) = printf "%s as %s\n" leafName (concat $ intersp
 main = do
   args <- getArgs
   deffile <- defaultJournalPath
+  opts <- getHledgerCliOpts cmdmode
+
   let file = headDef deffile args
-  j <- readJournalFile Nothing Nothing True file >>= either error' return
+  Right j <- runExceptT $ readJournalFile (inputopts_ opts) file
   mapM_ render $ dupes $ accountsNames j
